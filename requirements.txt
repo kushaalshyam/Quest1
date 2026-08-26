@@ -1,0 +1,9 @@
+streamlit
+whisperx
+torch
+torchaudio
+yt-dlp
+curl_cffi
+rapidfuzz
+sentence-transformers
+requests

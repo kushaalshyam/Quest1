@@ -1,0 +1,662 @@
+Prompts used for planning the build:
+
+1.
+I want to discuss and finally create a requirements doc then design doc with ADR (architectural Design Decision, which documents various options and why a particular way has been chosen) for this problem statement. 
+
+so I will give you some observations and thoughts I had in mind regarding the flow/design of solution:
+
+* the solution is not expecting you to conduct ocr on a video frame, even though it says "on screen dialogue", the actual video doesnt have dialogues coming up on the screen as stylised text, so ocr on video frames isnt the approach to follow, necessarily
+* user gives a dialogue like "my mind rebels at stagnation", or something similar, like my mind is against stagnation", and it should be able to catch the "my mind rebels at stagnation dialogue
+* user provides a url, to validate if it is a url or not, I thought of a 2 pronged approach, first, ping the text entered to see if it is a url, if ping doesnt give a response, then immediately ask user to enter some other url, and 2nd part is, check the http req res metadata and see if the url has a video resource it can access to not, if it isnt a video url, again, ask user to provide url of a video resource, if user just clicks on without 
+* my idea was to create a transcript using a model like whisper for timestamp: dialogue, and then use similarity/fuzzy search and then return the dialogue most similar according to the score generated between user given dialogue and the actual dialogue
+
+
+tech stack is python based, that is very much finalized and clear, streamlit frontend
+
+what is still under consideration:
+finalisation of solution architecture
+addressing/explaining tradeoffs
+addressing the various requirements given (both functional and non functional)
+and the points under evaluation from the pdf
+
+
+2.
+the adr doc will be of the entire solution, with each section discussing the tradeoffs etc.,, and for the ocr part, I was thinking to defer that to future/extended scope, the definition of on-screen dialogue was unclear, and my interpretation of it based on the input given was just the fact that where the dialogue appears in the video, not necessarily that same text shown on screen, this is my interpretation of the given requirement and so I had proceeded this way is how I am going to justify it
+
+3.
+the sample video was 50 minutes long, so worst case, mention any length but slower, the document doesnt state any constraint regarding video length
+
+4.
+also, why do we need both fuzzy and semantic search, cause semantics may be similar but the text may not be?
+
+5.
+lets go to the 5th, frame localisation, and then the dialogue matching strategy
+
+6.
+again, what is per span, like what does span mean,
+
+7.
+okay what is window slack defined here, is it the same as the top1-top2 threshold margin we defined? or are three 2 different things?
+
+8.
+so window_slack is basically the +-n value for which we conduct a sliding window across the transcript? 
+
+like input is 10 words, so we calculate the values for all windows from size [10-n, 10+n], both inclusive right?
+
+9.
+yes, please do, both, and enforce this optimisation method while calculating candidates. 
+
+also why whisperX, because of its granular nature? when compared to whisper which samples ever 5s?
+
+10.
+yes! lets go to section 7, and then document the approach as an approach.md/approach.pdf file where we document each section of the discussion, and what approach we have picked after evaluating tradeoffs in each section. 
+
+see what the approach.md file is from the picture here.
+
+11.
+I want to use cursor (THE GROK MODEL THERE) to help me build this out with the following philosophy:
+
+
+Ask claude to generate a requirements doc then design doc with ADR (architectural Design Decision, which documents various options and why a particular way has been chosen), then test strategy document, then implement tests and then implement solution
+
+above should be the sdlc sequence you must follow and for each it generates documents and ask it to keep it in docs folder 
+
+For test strategy and implementation ask it to implement in a sub agent (it minimises your session tokens, also it works on a clean slate from requirements docs without having any knowledge accumulated in main session and main session coordinates this and you dont have to do anything)
+
+you must write tests (unittest or some other library what ever you comfortable), drive that through tests that’s why test task is first in the order then implementation
+
+----end of philosophy----
+
+so, we are done with the adr, now we need to create the test strategy document and then implement tests, and then the solution.
+
+12.
+ocr is a future scope item 
+
+The other sections are fine as such
+
+
+Prompts used to setup Cursor:
+1.
+yes, represent the 2 files too me so I can download, also help me create skills/setup in cursor which can help me build this out
+
+2.
+wait so I write all tests at once? and then the entire implementation? how does that work? I want each phase to be implemented part by part so I can understand what is happening
+
+3.
+lets take it into cursor, first help me with its setup
+
+4.
+could you give me the bunch of placeholders I will need in order to fill into the tester and implementer agents for each phase?
+
+5.
+okay could you generate me the test and the implement prompt with the placeholders filled in? 
+
+and also the steps to check the running after each state like the pytest commands to be run and as such
+
+Prompts used for coding:
+==============================================================================
+PHASE: FRAME LOCALIZATION (COMPUTE FRAME NUMBER)
+==============================================================================
+
+--- Test-Writer Prompt ---
+
+You are working in this repository as a test-writing agent for a single, scoped phase of a larger build. You have no knowledge of any prior conversation about this project — your only inputs are docs/APPROACH.md, docs/TEST_STRATEGY.md, docs/PHASED_BUILD_PLAN.md, and the project rules in .cursor/rules/.
+
+Your scope for this session is exactly one module: src/frame_localization.py, function: compute_frame_number.
+
+Do NOT write tests for any other module, function, or phase, even if you can see how they'd be structured. Stay inside this phase's boundary. Do NOT write anything about extract_frame — that is a later phase.
+
+Your task:
+
+1. Read docs/TEST_STRATEGY.md Section 3 — find the exact contract for compute_frame_number.
+2. Read docs/TEST_STRATEGY.md Section 4.5 — implement exactly test cases T5.1, T5.2, T5.3, T5.4. No more, no fewer.
+3. Read docs/APPROACH.md ADR-5 (Frame Localization & Extraction) so the tests reflect the CFR-assumption reasoning, not just the literal signature.
+4. Create tests/test_frame_localization.py with one pytest function per test case, each with a comment referencing its case ID (e.g. # T5.2) directly above it.
+5. Do NOT implement src/frame_localization.py itself. It should not exist yet.
+6. Run `pytest tests/test_frame_localization.py -m "not slow and not integration"` and confirm it fails for the correct reason (missing module), not a bug in the test. Paste the failure output.
+7. If anything is ambiguous, STOP and report it rather than guessing.
+
+When done, summarize: which test cases were implemented, the red-state confirmation, and any open questions.
+
+
+--- Checkpoint: Confirm Red ---
+
+pytest tests/test_frame_localization.py -m "not slow and not integration" -v
+
+
+--- Implementer Prompt ---
+
+You are working in this repository as an implementation agent for a single, scoped phase of a larger build. You have no knowledge of how or why the tests for this phase were written — treat tests/test_frame_localization.py as a fixed specification, along with docs/APPROACH.md and docs/TEST_STRATEGY.md.
+
+Your scope for this session is exactly one module: src/frame_localization.py, function: compute_frame_number only. Do NOT implement extract_frame yet — that is a later phase.
+
+Do NOT implement any other module. Do NOT touch any file under tests/.
+
+Your task:
+
+1. Read docs/APPROACH.md ADR-5 to understand the design rationale (the CFR assumption, why round()).
+2. Read docs/TEST_STRATEGY.md Section 3 for the exact contract: def compute_frame_number(timestamp_sec: float, fps: float) -> int.
+3. Read tests/test_frame_localization.py in full.
+4. Implement compute_frame_number to satisfy these tests. Do not add functionality beyond what the tests and contract require.
+5. Run `pytest tests/test_frame_localization.py -m "not slow and not integration"` and iterate until it passes.
+6. If a test appears to encode incorrect behavior, STOP and report the specific conflict — do not edit the test.
+
+When done, summarize: pass/fail count, any design choices made, and any flagged conflicts.
+
+
+--- Checkpoint: Confirm Green ---
+
+pytest tests/test_frame_localization.py -m "not slow and not integration" -v
+
+
+==============================================================================
+PHASE: CONFIDENCE RESOLUTION
+==============================================================================
+
+--- Test-Writer Prompt ---
+
+You are working in this repository as a test-writing agent for a single, scoped phase of a larger build. You have no knowledge of any prior conversation about this project — your only inputs are docs/APPROACH.md, docs/TEST_STRATEGY.md, docs/PHASED_BUILD_PLAN.md, and the project rules in .cursor/rules/.
+
+Your scope for this session is exactly one module: src/confidence.py, including the ResolutionState enum, ResolutionResult dataclass, and the resolve function.
+
+Do NOT write tests for any other module or phase.
+
+Your task:
+
+1. Read docs/TEST_STRATEGY.md Section 3 — find the exact contract for confidence.py (ResolutionState, ResolutionResult, resolve).
+2. Read docs/TEST_STRATEGY.md Section 4.4 — implement exactly test cases T4.1 through T4.8. No more, no fewer. Pay close attention to T4.2, T4.5, and T4.7 — these pin down boundary/edge behavior that must be explicit, not assumed.
+3. Read docs/APPROACH.md ADR-6 (Ambiguity/Confidence Handling) so the tests reflect the floor-threshold + margin-threshold policy reasoning.
+4. Create tests/test_confidence.py with one pytest function per test case, each with a comment referencing its case ID (e.g. # T4.3) directly above it. You will need a lightweight way to construct Candidate objects with arbitrary combined_score values for these tests — you may need a minimal Candidate stub/fixture since src/matching.py (which defines Candidate) is a separate, not-yet-implemented phase. Note this dependency explicitly in your summary.
+5. Do NOT implement src/confidence.py itself.
+6. Run `pytest tests/test_confidence.py -m "not slow and not integration"` and confirm it fails for the correct reason. Paste the failure output.
+7. If anything is ambiguous — especially the inclusive/exclusive boundary behavior at exactly the floor or margin threshold — STOP and report it rather than silently picking one, since T4.2 and T4.5 exist specifically to pin this down.
+
+When done, summarize: which test cases were implemented, how you handled the Candidate dependency, the red-state confirmation, and any open questions.
+
+
+--- Checkpoint: Confirm Red ---
+
+pytest tests/test_confidence.py -m "not slow and not integration" -v
+
+
+--- Implementer Prompt ---
+
+You are working in this repository as an implementation agent for a single, scoped phase of a larger build. Treat tests/test_confidence.py as a fixed specification, along with docs/APPROACH.md and docs/TEST_STRATEGY.md.
+
+Your scope for this session is exactly one module: src/confidence.py (ResolutionState, ResolutionResult, resolve).
+
+Do NOT implement any other module. Do NOT touch any file under tests/.
+
+Your task:
+
+1. Read docs/APPROACH.md ADR-6 to understand the two-signal policy rationale (floor threshold + top1/top2 margin).
+2. Read docs/TEST_STRATEGY.md Section 3 for the exact contract, including default parameter values (floor_threshold=0.75, margin_threshold=0.10, top_k=3).
+3. Read tests/test_confidence.py in full — this defines the exact boundary behavior (inclusive/exclusive) you must match.
+4. Implement resolve to satisfy these tests, handling the edge cases explicitly: empty candidate list, single candidate (no top2 to compare), and top_k smaller than the candidate pool.
+5. Run `pytest tests/test_confidence.py -m "not slow and not integration"` and iterate until it passes.
+6. If a test appears to encode incorrect behavior relative to ADR-6, STOP and report the conflict — do not edit the test.
+
+When done, summarize: pass/fail count, how you resolved the boundary-inclusivity question, and any flagged conflicts.
+
+
+--- Checkpoint: Confirm Green & Regression ---
+
+pytest tests/test_confidence.py -m "not slow and not integration" -v
+pytest -m "not slow and not integration" -v
+
+
+==============================================================================
+PHASE: DIALOGUE MATCHING
+==============================================================================
+
+--- Test-Writer Prompt ---
+
+You are working in this repository as a test-writing agent for a single, scoped phase of a larger build. You have no knowledge of any prior conversation about this project — your only inputs are docs/APPROACH.md, docs/TEST_STRATEGY.md, docs/PHASED_BUILD_PLAN.md, and the project rules in .cursor/rules/.
+
+Your scope for this session is exactly one module: src/matching.py, function: find_candidates (plus the Candidate and WordTiming dataclasses it depends on).
+
+Do NOT write tests for any other module or phase.
+
+Your task:
+
+1. Read docs/TEST_STRATEGY.md Section 3 — find the exact contract for WordTiming, Candidate, and find_candidates, including the prefilter_top_n parameter.
+2. Read docs/TEST_STRATEGY.md Section 4.3 — implement exactly test cases T3.1, T3.2, T3.3, T3.4, T3.5, T3.6a, T3.6b, T3.6c, T3.6d, T3.7, T3.8, T3.9, T3.10. Pay particular attention to: T3.6a-T3.6d, which specifically verify that window_slack is actually wired into window-size generation; T3.8 (pre-filter excludes a semantically-plausible but lexically-distant distractor); and T3.9 (asserts the semantic scoring function is called at most prefilter_top_n times).
+3. Read docs/APPROACH.md ADR-4 in full — this explains WHY fuzzy and semantic are combined and the fuzzy-prefilter-then-semantic optimization. Your tests for T3.2 and T3.10 should specifically exercise this reasoning.
+4. Create tests/test_matching.py with one pytest function per test case, each with a comment referencing its case ID directly above it. Use tests/fixtures/sample_words.json as described in docs/TEST_STRATEGY.md Section 5.
+5. Do NOT implement src/matching.py itself.
+6. Run `pytest tests/test_matching.py -m "not slow and not integration"` and confirm it fails for the correct reason. Paste the failure output.
+7. If anything about the pre-filter mechanics or scoring weights is ambiguous, STOP and report it rather than guessing.
+
+When done, summarize: which test cases were implemented, the fixture data you created, the red-state confirmation, and any open questions.
+
+
+--- Checkpoint: Confirm Red ---
+
+pytest tests/test_matching.py -m "not slow and not integration" -v
+
+
+--- Implementer Prompt ---
+
+You are working in this repository as an implementation agent for a single, scoped phase of a larger build. Treat tests/test_matching.py as a fixed specification, along with docs/APPROACH.md and docs/TEST_STRATEGY.md.
+
+Your scope for this session is exactly one module: src/matching.py (WordTiming, Candidate, find_candidates).
+
+Do NOT implement any other module. Do NOT touch any file under tests/ or tests/fixtures/.
+
+Your task:
+
+1. Read docs/APPROACH.md ADR-4 in full to understand the design rationale: sliding window candidate spans, fuzzy score (rapidfuzz) computed for ALL windows, top prefilter_top_n proceed to semantic scoring (sentence-transformer), combined_score weighted 60/40.
+2. Read docs/TEST_STRATEGY.md Section 3 for exact contract and defaults (window_slack=2, prefilter_top_n=20).
+3. Read tests/test_matching.py in full — satisfy call-count assertion on semantic scoring (T3.9).
+4. Implement find_candidates to satisfy these tests.
+5. Run `pytest tests/test_matching.py -m "not slow and not integration"` and iterate until it passes.
+6. If a test appears to encode incorrect behavior relative to ADR-4, STOP and report the conflict — do not edit the test.
+
+When done, summarize: pass/fail count, structure of pre-filter/semantic-scoring split, and any flagged conflicts.
+
+
+--- Checkpoint: Confirm Green & Regression ---
+
+pytest tests/test_matching.py -m "not slow and not integration" -v
+pytest -m "not slow and not integration" -v
+
+
+==============================================================================
+PHASE: URL VALIDATION
+==============================================================================
+
+--- Test-Writer Prompt ---
+
+You are working in this repository as a test-writing agent for a single, scoped phase of a larger build. You have no knowledge of any prior conversation about this project — your only inputs are docs/APPROACH.md, docs/TEST_STRATEGY.md, docs/PHASED_BUILD_PLAN.md, and the project rules in .cursor/rules/.
+
+Your scope for this session is exactly one module: src/url_validation.py, function: validate_video_url (plus VideoMetadata and ValidationResult dataclasses).
+
+Do NOT write tests for any other module or phase.
+
+Your task:
+
+1. Read docs/TEST_STRATEGY.md Section 3 for the exact contract.
+2. Read docs/TEST_STRATEGY.md Section 4.1 — implement exactly test cases T1.1 through T1.6.
+3. Read docs/APPROACH.md ADR-2 for layered-validation reasoning (urlparse -> yt-dlp -> HTTP HEAD fallback).
+4. Create tests/test_url_validation.py with test cases tagged with IDs. Add necessary mocks to tests/conftest.py for yt_dlp.YoutubeDL.extract_info and HTTP HEAD call.
+5. Do NOT implement src/url_validation.py itself.
+6. Run `pytest tests/test_url_validation.py -m "not slow and not integration"` and confirm it fails for the correct reason. Paste the failure output.
+7. If ambiguous, STOP and report rather than guessing.
+
+When done, summarize: implemented test cases, conftest.py mocks, red-state confirmation, and open questions.
+
+
+--- Checkpoint: Confirm Red ---
+
+pytest tests/test_url_validation.py -m "not slow and not integration" -v
+
+
+--- Implementer Prompt ---
+
+You are working in this repository as an implementation agent for a single, scoped phase of a larger build. Treat tests/test_url_validation.py as a fixed specification, along with docs/APPROACH.md and docs/TEST_STRATEGY.md.
+
+Your scope for this session is exactly one module: src/url_validation.py (VideoMetadata, ValidationResult, validate_video_url).
+
+Do NOT implement any other module. Do NOT touch any file under tests/.
+
+Your task:
+
+1. Read docs/APPROACH.md ADR-2 to understand the layered validation rationale.
+2. Read docs/TEST_STRATEGY.md Section 3 for the exact contract.
+3. Read tests/test_url_validation.py in full, including conftest.py mocks.
+4. Implement validate_video_url: urlparse check first, yt-dlp extract_info second, HTTP HEAD fallback on yt-dlp failure, populating source_extractor accordingly ("ytdlp" or "http_head_fallback").
+5. Run `pytest tests/test_url_validation.py -m "not slow and not integration"` and iterate until it passes.
+6. If a test appears to encode incorrect behavior, STOP and report conflict — do not edit the test.
+
+When done, summarize: pass/fail count, design choices, and flagged conflicts.
+
+
+--- Checkpoint: Confirm Green & Regression ---
+
+pytest tests/test_url_validation.py -m "not slow and not integration" -v
+pytest -m "not slow and not integration" -v
+
+
+==============================================================================
+PHASE: FRAME LOCALIZATION (EXTRACT FRAME)
+==============================================================================
+
+--- Test-Writer Prompt ---
+
+You are working in this repository as a test-writing agent for a single, scoped phase of a larger build. You have no knowledge of any prior conversation about this project — your only inputs are docs/APPROACH.md, docs/TEST_STRATEGY.md, docs/PHASED_BUILD_PLAN.md, and the project rules in .cursor/rules/.
+
+Your scope for this session is exactly one function: extract_frame, in the EXISTING file src/frame_localization.py.
+
+Do NOT modify or re-test compute_frame_number. Do NOT write tests for any other module.
+
+Your task:
+
+1. Read docs/TEST_STRATEGY.md Section 3 for exact contract of extract_frame (including FrameExtractionError).
+2. Read docs/TEST_STRATEGY.md Section 4.5 — implement test cases T5.5 and T5.6 (include T5.7 marked @pytest.mark.slow and @pytest.mark.integration).
+3. Read docs/APPROACH.md ADR-5 Sub-decision B for ffmpeg-accurate-seek rationale.
+4. EXTEND existing tests/test_frame_localization.py by appending new test functions.
+5. Mock subprocess.run/Popen for T5.5 and T5.6 in tests/conftest.py if not present.
+6. Do NOT implement extract_frame itself.
+7. Run `pytest tests/test_frame_localization.py -m "not slow and not integration"` — existing tests pass (4 passed), new tests fail for missing function. Paste output.
+8. If ambiguous, STOP and report.
+
+When done, summarize: added test cases, confirmation existing 4 pass, red state for new tests, and open questions.
+
+
+--- Checkpoint: Confirm Mixed State (4 Pass, New Red) ---
+
+pytest tests/test_frame_localization.py -m "not slow and not integration" -v
+
+
+--- Implementer Prompt ---
+
+You are working in this repository as an implementation agent for a single, scoped phase of a larger build. Treat tests/test_frame_localization.py as a fixed specification, along with docs/APPROACH.md and docs/TEST_STRATEGY.md.
+
+Your scope for this session is exactly one function: extract_frame, to be ADDED to existing src/frame_localization.py.
+
+Do NOT implement any other module. Do NOT touch any file under tests/.
+
+Your task:
+
+1. Read docs/APPROACH.md ADR-5 Sub-decision B for ffmpeg-accurate-seek rationale.
+2. Read docs/TEST_STRATEGY.md Section 3 for contract and FrameExtractionError.
+3. Read new test functions in tests/test_frame_localization.py (T5.5-T5.7).
+4. Implement extract_frame using subprocess to invoke ffmpeg with accurate timestamp seek and single-frame extraction, raising FrameExtractionError on failure.
+5. Run `pytest tests/test_frame_localization.py -m "not slow and not integration"` and iterate until ALL tests pass.
+6. If a test encodes incorrect behavior, STOP and report conflict — do not edit the test.
+
+When done, summarize: pass/fail count for file and flagged conflicts.
+
+
+--- Checkpoint: Confirm Green & Regression ---
+
+pytest tests/test_frame_localization.py -m "not slow and not integration" -v
+pytest -m "not slow and not integration" -v
+
+
+==============================================================================
+PHASE: TRANSCRIPTION
+==============================================================================
+
+--- Test-Writer Prompt ---
+
+You are working in this repository as a test-writing agent for a single, scoped phase of a larger build. You have no knowledge of any prior conversation about this project — your only inputs are docs/APPROACH.md, docs/TEST_STRATEGY.md, docs/PHASED_BUILD_PLAN.md, and the project rules in .cursor/rules/.
+
+Your scope for this session is exactly one module: src/transcription.py, function: transcribe.
+
+Do NOT write tests for any other module.
+
+Your task:
+
+1. Read docs/TEST_STRATEGY.md Section 3 for contract (returns List[WordTiming]).
+2. Read docs/TEST_STRATEGY.md Section 4.2 — implement T2.1 and T2.2 as fast/mocked tests. Implement T2.3 marked @pytest.mark.slow and @pytest.mark.integration.
+3. Read docs/APPROACH.md ADR-3 for WhisperX rationale.
+4. Create tests/test_transcription.py with tagged test cases. Mock underlying WhisperX model call in tests/conftest.py for T2.1/T2.2.
+5. Do NOT implement src/transcription.py itself.
+6. Run `pytest tests/test_transcription.py -m "not slow and not integration"` and confirm failure for correct reason. Paste output.
+7. If ambiguous, STOP and report.
+
+When done, summarize: implemented test cases, mocking approach, red-state confirmation, and open questions.
+
+
+--- Checkpoint: Confirm Red ---
+
+pytest tests/test_transcription.py -m "not slow and not integration" -v
+
+
+--- Implementer Prompt ---
+
+You are working in this repository as an implementation agent for a single, scoped phase of a larger build. Treat tests/test_transcription.py as a fixed specification, along with docs/APPROACH.md and docs/TEST_STRATEGY.md.
+
+Your scope for this session is exactly one module: src/transcription.py (transcribe).
+
+Do NOT implement any other module. Do NOT touch any file under tests/.
+
+Your task:
+
+1. Read docs/APPROACH.md ADR-3 for WhisperX forced alignment rationale.
+2. Read docs/TEST_STRATEGY.md Section 3 for contract.
+3. Read tests/test_transcription.py in full.
+4. Implement transcribe using WhisperX: run Whisper transcription, then forced-alignment pass, returning List[WordTiming].
+5. Run `pytest tests/test_transcription.py -m "not slow and not integration"` and iterate until fast tests pass.
+6. If a test encodes incorrect behavior, STOP and report conflict — do not edit test.
+
+When done, summarize: pass/fail count for fast suite and flagged conflicts.
+
+
+--- Checkpoint: Confirm Green & Regression ---
+
+pytest tests/test_transcription.py -m "not slow and not integration" -v
+pytest -m "not slow and not integration" -v
+
+
+==============================================================================
+PHASE: STREAMLIT UI
+==============================================================================
+
+--- Test-Writer Prompt ---
+
+You are working in this repository as a test-writing agent for a single, scoped phase of a larger build. You have no knowledge of any prior conversation about this project — your only inputs are docs/APPROACH.md, docs/TEST_STRATEGY.md, docs/PHASED_BUILD_PLAN.md, and the project rules in .cursor/rules/.
+
+Your scope for this session is the Streamlit entry point src/app.py. The test file for this module is named tests/test_ui_smoke.py.
+
+Do NOT write tests for any other module. Mock the backend pipeline as a single boundary rather than re-testing pipeline logic here.
+
+Your task:
+
+1. Read docs/TEST_STRATEGY.md Section 4.7 — implement exactly test cases T7.1, T7.2, T7.3.
+2. Read docs/APPROACH.md ADR-7 for staged-progress UX rationale and ResolutionState outcomes.
+3. Use streamlit.testing.v1.AppTest if available; if unavailable, report and propose closest alternative.
+4. Create tests/test_ui_smoke.py with test cases tagged with IDs. Mock backend pipeline call at UI boundary.
+5. Do NOT implement src/app.py itself.
+6. Run `pytest tests/test_ui_smoke.py -m "not slow and not integration"` and confirm failure for correct reason. Paste output.
+7. If ambiguous, STOP and report.
+
+When done, summarize: implemented test cases, AppTest availability, red-state confirmation, and open questions.
+
+
+--- Checkpoint: Confirm Red ---
+
+pytest tests/test_ui_smoke.py -m "not slow and not integration" -v
+
+
+--- Implementer Prompt ---
+
+You are working in this repository as an implementation agent for a single, scoped phase of a larger build. Treat tests/test_ui_smoke.py as a fixed specification, along with docs/APPROACH.md and docs/TEST_STRATEGY.md.
+
+Your scope for this session is exactly one module: src/app.py (Streamlit entry point). The test file is tests/test_ui_smoke.py.
+
+Do NOT implement any other module. Do NOT touch any file under tests/.
+
+Your task:
+
+1. Read docs/APPROACH.md ADR-7 for staged-progress UX design: single page, two inputs, run button, st.status staged progress, and three result-rendering states.
+2. Read tests/test_ui_smoke.py in full.
+3. Implement src/app.py wiring together existing modules in pipeline order.
+4. Run `pytest tests/test_ui_smoke.py -m "not slow and not integration"` and iterate until it passes.
+5. If a test encodes incorrect behavior, STOP and report conflict — do not edit test.
+
+When done, summarize: pass/fail count, pipeline wiring structure, and flagged conflicts.
+
+
+--- Checkpoint: Confirm Green & Regression ---
+
+pytest tests/test_ui_smoke.py -m "not slow and not integration" -v
+pytest -m "not slow and not integration" -v
+
+
+==============================================================================
+PHASE: END-TO-END INTEGRATION VERIFICATION
+==============================================================================
+
+--- Verification Prompt ---
+
+You are working in this repository as a verification agent. All modules (url_validation, transcription, matching, confidence, frame_localization, app) are already implemented and their individual fast test suites pass.
+
+Your task:
+
+1. Read docs/TEST_STRATEGY.md Section 4.6 for test cases T6.1 and T6.2.
+2. Read docs/TEST_STRATEGY.md Section 5 for fixture video requirements (tests/fixtures/tiny_clip.mp4). Generate it if it doesn't exist yet.
+3. Create or confirm tests/test_e2e.py implements T6.1 and T6.2, wiring the real non-mocked pipeline end to end.
+4. Run integration suite and report actual pass/fail with timestamps/frame numbers produced compared against fixture ground truth.
+
+Do NOT modify any already-implemented module unless a genuine bug is found — report it rather than patching it silently.
+
+
+--- Checkpoint: Run Integration & Slow Suites ---
+
+pytest tests/test_e2e.py -m "integration" -v
+pytest -m "slow" -v
+
+
+--- Final Full Repository Verification ---
+
+pytest -m "not slow and not integration" -v
+pytest -v
+
+# ==============================================================================
+# DEPENDENCY CONFLICT & ENVIRONMENT RESOLUTION
+# ==============================================================================
+
+I havent performed integrations, I am yet to run that code, before I run that im faced with this dependency conflict which I want to solve.
+
+---
+
+ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
+sentence-transformers 6.0.0 requires huggingface-hub<2.0.0,>=1.3.0, but you have huggingface-hub 0.36.2 which is incompatible.
+transformers 5.16.0 requires huggingface-hub<2.0,>=1.5.0, but you have huggingface-hub 0.36.2 which is incompatible.
+
+---
+
+whisperx 3.8.6 has requirement huggingface-hub<1.0.0, but you have huggingface-hub 1.28.0.
+this is still coming up, is there a later version for whisperx? also btw my code rn doesnt use whisper through ollama or anything like that, will the code still run?
+
+
+# ==============================================================================
+# INITIAL RUNTIME ERROR & CONTAINER DEBUGGING
+# ==============================================================================
+
+RuntimeError: Failed to load audio: ffmpeg version 9.0.1
+[in#0 @ 0xa64c24000] Format mov,mp4,m4a,3gp,3g2,mj2 detected only with low score of 1, misdetection possible!
+[in#0 @ 0xa64c24000] moov atom not found
+[in#0 @ 0xa64c20000] Error opening input: Invalid data found when processing input
+Error opening input file /var/folders/.../tmpkpfjihpf/video.mp4.
+
+when I ran my code I got this, do I share you the zip file of the codebase so you have context and can help me debug this?
+
+---
+
+which folder? var?
+
+
+# ==============================================================================
+# CODEBASE INTEGRATION & REFACTORING (APP.PY & URL_VALIDATION.PY)
+# ==============================================================================
+
+[PASTE: src/app.py code]
+this is my app.py file, change this accordingly
+
+---
+
+[PASTE: src/url_validation.py code]
+also what abt this file, is it taking some metadata as constants?
+
+---
+
+[PASTE: updated src/url_validation.py code]
+now check this file of url_validation, is this right?
+
+
+# ==============================================================================
+# PIPELINE STAGE DEBUGGING & YT-DLP FORMAT REFINEMENT
+# ==============================================================================
+
+🔍 Stage 1: Validating video URL...
+📥 Stage 2: Fetching video resource...
+Failed to download video file or the target resource is empty.
+
+---
+
+ok yeah dont restrict the format filter, keep the web as open as possible
+
+---
+
+but it should be video format so ensure that
+
+
+# ==============================================================================
+# DOWNLOAD LOCATION & MONITORING
+# ==============================================================================
+
+ok so with the updated code, where will the file be downloaded to?
+
+---
+
+can we create a directory in the current directory of the application so we know whether the download is happening or not?
+
+---
+
+before this, where do I see if theres a file being installed?
+
+---
+
+nono i dont have the downloads code running, I used the previous code
+
+
+# ==============================================================================
+# HANDLING PLATFORM BLOCKS & CONNECTION RESETS (OK.RU)
+# ==============================================================================
+
+yt-dlp download notice: ERROR: [Odnoklassniki] 248244667877: Unable to download webpage: ('Connection aborted.', ConnectionResetError(54, 'Connection reset by peer'))
+
+RuntimeError: Failed to load audio... [moov atom not found]
+Error opening input file /var/folders/.../tmp88wal2sj/video.mp4.
+
+it first downloaded, then when I ran again it probably rewrote and yt-dlp raised this error
+
+---
+
+also add the thing of creating a downloads/ folder and download the resource there instead of the tmpXXXXXX
+
+---
+
+This URL is not a supported video resource. Please re-enter a valid or supported video URL.
+now its directly going here
+
+https://ok.ru/video/248244667877
+
+this is the video im running
+
+---
+
+Local URL: http://localhost:8502
+Network URL: http://192.168.1.5:8502
+
+ERROR: [Odnoklassniki] 248244667877: Unable to download webpage: ('Connection aborted.', ConnectionResetError(54, 'Connection reset by peer'))
+
+---
+
+also should we really have user agent header? considering if someone else uses it changes
+
+---
+
+ok which is the version to put in app.py and the version for url_validation, give me this
+
+---
+
+🔍 Stage 1: Validating video URL...
+Could not confirm this URL as a video resource. Please re-enter a valid video URL.
+again its going to this
+
+---
+
+yt-dlp download notice: ERROR: [Odnoklassniki] 248244667877: Unable to download webpage: ('Connection aborted.', ConnectionResetError(54, 'Connection reset by peer'))
+Failed to download video file or the target resource is empty.
+
+---
+
+yt-dlp -F https://ok.ru/video/248244667877        
+[Odnoklassniki] Extracting URL: https://ok.ru/video/248244667877
+[Odnoklassniki] 248244667877: Downloading desktop webpage
+[Odnoklassniki] 248244667877: Downloading mobile webpage
+ERROR: [Odnoklassniki] 248244667877: Unable to download webpage: ('Connection aborted.', ConnectionResetError(54, 'Connection reset by peer'))
