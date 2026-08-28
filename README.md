@@ -7,7 +7,7 @@ An AI-powered video processing application that pinpoints the exact timestamp an
 ## 📌 Features
 
 * **Multi-Source Validation:** Supports streaming platform URLs (`yt-dlp`) and direct media files with HTTP HEAD validation.
-* **Forced Phoneme Alignment:** Utilizes `WhisperX` and `Pyannote` for word-level speech recognition timestamps.
+* **Forced Character Alignment:** Utilizes `WhisperX` for word-level speech recognition timestamps.
 * **Hybrid Dialogue Matching:** Combines fuzzy lexical matching (`rapidfuzz`) with semantic embedding similarity (`sentence-transformers`) to handle paraphrases, partial quotes, and ASR mis-transcriptions.
 * **Frame-Accurate Extraction:** Computes exact frame numbers and extracts PNG snapshot images using frame-accurate `FFmpeg` seeks.
 * **Staged Streamlit Interface:** Real-time visual feedback tracking pipeline execution from validation to frame localization.
