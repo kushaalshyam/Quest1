@@ -35,6 +35,20 @@ from src.transcription import transcribe
 from src.url_validation import ValidationResult, VideoMetadata, validate_video_url
 
 
+def format_timestamp(seconds: float, include_ms: bool = True) -> str:
+    """Convert a float seconds value into HH:MM:SS (or HH:MM:SS.mmm) format."""
+    if seconds < 0:
+        seconds = 0
+    total_ms = round(seconds * 1000)
+    hours, remainder_ms = divmod(total_ms, 3_600_000)
+    minutes, remainder_ms = divmod(remainder_ms, 60_000)
+    secs, ms = divmod(remainder_ms, 1000)
+
+    if include_ms:
+        return f"{hours:02d}:{minutes:02d}:{secs:02d}.{ms:03d}"
+    return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+
+
 def download_video_or_audio(url: str, output_dir: str) -> Optional[str]:
     """Download video resource into output_dir using yt-dlp with fallback handling."""
     # Check local files first
@@ -157,9 +171,6 @@ def render_results(
         with col1:
             st.subheader("Match Details")
             st.markdown(f"**Matched Dialogue:** {candidate.text}")
-            st.markdown(
-                f"**Timestamp Range:** {candidate.start_sec:.2f}s – {candidate.end_sec:.2f}s"
-            )
             frame_number = compute_frame_number(candidate.start_sec, fps)
             st.markdown(f"**Frame Number:** `{frame_number}` (at {fps:.2f} fps)")
             st.markdown(
@@ -176,7 +187,7 @@ def render_results(
                 if extracted and os.path.exists(extracted):
                     st.image(
                         extracted,
-                        caption=f"Frame #{frame_number} at {candidate.start_sec:.2f}s",
+                        caption=f"Frame #{frame_number} at {format_timestamp(candidate.start_sec)}",
                         use_container_width=True,
                     )
             except Exception as exc:
@@ -194,9 +205,6 @@ def render_results(
             col1, col2 = st.columns([1, 1])
             with col1:
                 st.markdown(f"### Candidate #{idx}: \"{cand.text}\"")
-                st.markdown(
-                    f"**Timestamp Range:** {cand.start_sec:.2f}s – {cand.end_sec:.2f}s"
-                )
                 st.markdown(f"**Frame Number:** `{frame_num}` (at {fps:.2f} fps)")
                 st.markdown(
                     f"**Combined Score:** `{cand.combined_score:.3f}` "
@@ -209,7 +217,7 @@ def render_results(
                     if extracted and os.path.exists(extracted):
                         st.image(
                             extracted,
-                            caption=f"Candidate #{idx} - Frame #{frame_num} at {cand.start_sec:.2f}s",
+                            caption=f"Candidate #{idx} - Frame #{frame_num} at {format_timestamp(cand.start_sec)}",
                             use_container_width=True,
                         )
                 except Exception as exc:
@@ -227,9 +235,6 @@ def render_results(
             col1, col2 = st.columns([1, 1])
             with col1:
                 st.markdown(f"**Dialogue:** {cand.text}")
-                st.markdown(
-                    f"**Timestamp Range:** {cand.start_sec:.2f}s – {cand.end_sec:.2f}s"
-                )
                 st.markdown(f"**Frame Number:** `{frame_num}` (at {fps:.2f} fps)")
                 st.markdown(
                     f"**Combined Score:** `{cand.combined_score:.3f}` (Below floor threshold)"
@@ -241,7 +246,7 @@ def render_results(
                     if extracted and os.path.exists(extracted):
                         st.image(
                             extracted,
-                            caption=f"Best-effort Frame #{frame_num} at {cand.start_sec:.2f}s",
+                            caption=f"Best-effort Frame #{frame_num} at {format_timestamp(cand.start_sec)}",
                             use_container_width=True,
                         )
                 except Exception:
